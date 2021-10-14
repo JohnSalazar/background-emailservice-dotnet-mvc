@@ -46,7 +46,18 @@ namespace BackgroundEmailService.MVC.Controllers
         {
             return Ok(_clientRepository.Get(id));
         }
-        
+
+        [HttpGet]
+        [Route("clients/cancel-send-email")]
+        public async Task<IActionResult> CancelSendEmail()
+        {
+            
+            var result = _emailTaskService.CancelSendEmailTask().Result;
+            if (!result) Console.WriteLine("Cancel send email fail!");
+
+            return Ok(result);
+        }
+
         [HttpPost]
         [Route("clients/send-email")]
         public async Task<IActionResult> SendEmail([FromBody] List<EmailViewModel> emails)

@@ -19,11 +19,12 @@ namespace BackgroundEmailService.MVC.Services
         private List<string> _emailProcessingList = new List<string>();
         private List<EmailViewModel> _emailStatusList = new List<EmailViewModel>();
         private const int _maxThrottler = 3;
+        private bool _stopProcessing = false;
 
         public EmailTaskService(EmailHub emailHub, IEmailService emailService)
         {
             _emailHub = emailHub;
-            _emailService = emailService;
+            _emailService = emailService;            
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,17 +43,23 @@ namespace BackgroundEmailService.MVC.Services
             if (_emailWaitingList?.Find(e => e.ToString().Equals(email.Trim().ToString())) == null)
             {
                 _emailWaitingList.Add(email.Trim());                
-            }
+            }           
             return true;
         }
 
         private async void ProcessQueue()
         {
-
             if (CreateProcessingQueue())
             {
-                _emailProcessingList.ForEach(async delegate (string email)
+                var list = _emailProcessingList.ToList();
+                list.ForEach(async delegate (string email)
                 {
+                    if (_stopProcessing)
+                    {                        
+                        _stopProcessing = false;
+                        return;
+                    }
+
                     var emailStatusListSending = CreateEmailState(email, SendState.Sending);
                     UpdateStatusList(emailStatusListSending);
                     emailStatusListSending = null;
@@ -63,7 +70,7 @@ namespace BackgroundEmailService.MVC.Services
                         var emailStatusListSent = CreateEmailState(email, SendState.Sent);
                         UpdateStatusList(emailStatusListSent);
                         emailStatusListSent = null;
-                        
+
                         Console.ForegroundColor = ConsoleColor.Green;
                         Console.WriteLine($"{email} sent!");
                         Console.ResetColor();
@@ -79,6 +86,7 @@ namespace BackgroundEmailService.MVC.Services
                         Console.ResetColor();
                     }
                 });
+                list = null;
 
                 _emailWaitingList.RemoveAll(new HashSet<string>(_emailProcessingList.ToArray()).Contains);
 
@@ -125,18 +133,21 @@ namespace BackgroundEmailService.MVC.Services
             return true;
         }
 
-        public bool CancelTask(string email)
+        public async Task<bool> CancelSendEmailTask()
         {
-            var emailStatusListProcessing = CreateEmailState(email, SendState.Canceling);
-            UpdateStatusList(emailStatusListProcessing);
-            emailStatusListProcessing = null;
+            _stopProcessing = true;
+            _emailWaitingList.Clear();
+            _emailProcessingList.ForEach(email =>
+            {
+                var emailStatusListProcessed = CreateEmailState(email, SendState.Canceled);
+                UpdateStatusList(emailStatusListProcessed);
+                emailStatusListProcessed = null;
 
-            _emailProcessingList.RemoveAll(x => x.Equals(email));
-            _emailWaitingList.RemoveAll(x => x.Equals(email));
-
-            var emailStatusListProcessed = CreateEmailState(email, SendState.Canceled);
-            UpdateStatusList(emailStatusListProcessed);
-            emailStatusListProcessed = null;
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{email} send canceled!");
+                Console.ResetColor();
+            });
+            _emailProcessingList.Clear();
 
             return true;
         }
@@ -148,6 +159,7 @@ namespace BackgroundEmailService.MVC.Services
 
         private async Task<bool> Send(string email)
         {
+            if (_stopProcessing) return false;
             var send = await _emailService.SendEmailAsync(email);
             return send;
         }

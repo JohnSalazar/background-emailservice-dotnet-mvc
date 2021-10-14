@@ -41,8 +41,18 @@ input[type=text] {
     }
 </table>
 
-<input type="button" onclick="javascript: SendEmail();" value="Send" />
 <p></p>
+
+<table>
+    <tr>
+        <td>
+            <input type="button" onclick="javascript: SendEmail();" value="Send" />
+        </td>
+        <td>
+            <input type="button" onclick="javascript: CancelSendEmail();" value="Cancel" />
+        </td>
+    </tr>
+</table>
 
 <script>
     function SendEmail() {
@@ -53,6 +63,16 @@ input[type=text] {
             data: JSON.stringify(data),
             contentType: "application/json; charset=utf-8",  
             dataType: "json",  
+            success: function(r) {  
+                
+            }
+       });
+    };
+
+    function CancelSendEmail() {       
+       $.ajax({
+            type: "GET",
+            url: "/clients/cancel-send-email",  
             success: function(r) {  
                 
             }

@@ -22,6 +22,10 @@ connection.on("emailObserver", (sender, message) => {
                 element.className = element.className.replace(classnameclear, "fa fa-check");
                 element.style.color = "green";
                 break;
+            case 5:
+                element.className = element.className.replace(classnameclear, "fa fa-ban");
+                element.style.color = "orange";
+                break;
             case 6:
                 element.className = element.className.replace(classnameclear, "fa fa-exclamation");
                 element.style.color = "red";
